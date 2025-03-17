@@ -119,6 +119,38 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &267729527
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 267729528}
+  m_Layer: 0
+  m_Name: '[ENVIRONMENT]'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &267729528
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 267729527}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 777030793}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -206,7 +238,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.060282003, y: -0, z: -0, w: 0.9981814}
-  m_LocalPosition: {x: 0, y: 10.9, z: -25.4}
+  m_LocalPosition: {x: 0, y: 16.4, z: -31.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -348,7 +380,7 @@ Transform:
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
+  m_LocalPosition: {x: 14.5, y: 37.5, z: -25.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -510,7 +542,7 @@ Transform:
   m_GameObject: {fileID: 427377697}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.48323143, w: 0.8754927}
-  m_LocalPosition: {x: 0.16334751, y: 3.85, z: 0.05}
+  m_LocalPosition: {x: -0.2, y: 17.6, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -525,13 +557,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 427377697}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0be22113fcb5d1a4f8e72d0824e10664, type: 3}
+  m_Script: {fileID: 11500000, guid: 0145277368e62554fb6761698875e893, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _temperature: 10
+  _conductivity: 0.01
+  _density: 0.5
+  _environmentTemperature: 0
   _rigidbody: {fileID: 0}
-  Volume: {fileID: 0}
-  _density: 0.9
-  _inWaterDamping: 0.5
 --- !u!1 &777030788
 GameObject:
   m_ObjectHideFlags: 0
@@ -546,6 +579,7 @@ GameObject:
   - component: {fileID: 777030790}
   - component: {fileID: 777030789}
   - component: {fileID: 777030794}
+  - component: {fileID: 777030795}
   m_Layer: 0
   m_Name: Water_Volume
   m_TagString: Untagged
@@ -662,12 +696,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 777030788}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 5, z: -1}
-  m_LocalScale: {x: 50, y: 10, z: 50}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 24.4, z: 0}
+  m_LocalScale: {x: 50, y: 50, z: 50}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 267729528}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &777030794
 MonoBehaviour:
@@ -681,6 +715,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d79a9a271e79740a480c1c406e35fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _collider: {fileID: 0}
+  Entities: []
+  _gridCellSize: 10
+  _startingTemperature: 3.5
+  _maxTemperature: 100
+  _conductivity: 0.01
+  _startingDensity: 1
+  _environmentalDrag: 0.5
+--- !u!156049354 &777030795
+Grid:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 777030788}
+  m_Enabled: 1
+  m_CellSize: {x: 1, y: 1, z: 1}
+  m_CellGap: {x: 0, y: 0, z: 0}
+  m_CellLayout: 0
+  m_CellSwizzle: 0
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -897,5 +951,5 @@ SceneRoots:
   - {fileID: 410087041}
   - {fileID: 832575519}
   - {fileID: 1021646661}
-  - {fileID: 777030793}
+  - {fileID: 267729528}
   - {fileID: 427377702}
