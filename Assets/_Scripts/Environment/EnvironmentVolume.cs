@@ -84,6 +84,8 @@ public class EnvironmentVolume : MonoBehaviour
 
     [Header("Data")] 
     public Dictionary<Vector3Int, EnvironCellData> Cells { get; private set; } = new();
+    private Vector3Int _cellRangeMin;
+    private Vector3Int _cellRangeMax;
 
     #region UNITY METHODS
     private void Awake()
@@ -98,7 +100,6 @@ public class EnvironmentVolume : MonoBehaviour
         TransferHeat();
         if(_passiveCooling) PassiveCooling();
     }
-    
 
     #endregion
 
@@ -109,6 +110,8 @@ public class EnvironmentVolume : MonoBehaviour
         {
             //Get cell coordinates
             var cellData = cell.Value;
+            
+            //Neighbours inside same volume
             var surroundingCells = GetSurroundingCells(cell.Key);
             foreach (var neighbour in surroundingCells)
             {
@@ -116,12 +119,29 @@ public class EnvironmentVolume : MonoBehaviour
                 {
                     cellData.CallForExchange(neighbour);
                 }
-
             }
-            
+
+            //Neighbour cells in foreign volumes
+            if(cell.Key.x == _cellRangeMax.x) 
+                TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.right), cell.Value);
+            if(cell.Key.x == _cellRangeMin.x) 
+                TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.left), cell.Value);
+            if(cell.Key.y == _cellRangeMax.y) 
+                TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.up), cell.Value);
+            if(cell.Key.y == _cellRangeMin.y) 
+                TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.down), cell.Value);
+            if(cell.Key.z == _cellRangeMax.z) 
+                TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.forward), cell.Value);
+            if(cell.Key.z == _cellRangeMin.z) 
+                TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.back), cell.Value);
         }
     }
 
+    private void TryHeatNextVolume(EnvironCellData foreignCell, EnvironCellData homeCell)
+    {
+        if (foreignCell == null) return;
+        if(foreignCell.Temperature < homeCell.Temperature) homeCell.CallForExchange(foreignCell);
+    }
     private void PassiveCooling()
     {
         foreach (var cell in Cells) cell.Value.PassiveCooling(_coolingRate);
@@ -199,6 +219,24 @@ public class EnvironmentVolume : MonoBehaviour
         return neighbourCells;
         
     }
+
+    protected EnvironCellData CastForNeighbourVolume(Vector3 startingPos, Vector3 direction)
+    {
+        var cellExtent = (float)_gridCellSize;
+        startingPos = new Vector3(startingPos.x + cellExtent/2, startingPos.y + cellExtent/2, startingPos.z + cellExtent/2);
+        
+        RaycastHit[] hits;
+        hits = (Physics.RaycastAll(startingPos, direction, _gridCellSize + 1));
+        foreach (var hit in hits)
+        {
+            if (hit.collider == _collider) continue;
+            if(hit.collider.TryGetComponent<EnvironmentVolume>(out var volume)) 
+                return volume.Cells.GetValueOrDefault(volume.WorldPosToCell(hit.point));
+        }
+
+        return null;
+    }
+    
     #endregion
     
     #region SETUP
@@ -217,12 +255,26 @@ public class EnvironmentVolume : MonoBehaviour
                 {
                     var cellCoordinates = new Vector3Int(x, y, z);
                     var cellData = new EnvironCellData(index, _startingTemperature, _maxTemperature, _minTemperature, _startingDensity, _conductivity);
+                    CellKeyMinMax(cellCoordinates);
                     
                     Cells.Add(cellCoordinates, cellData);
                     index++;
                 }
             }
         }
+    }
+
+    private void CellKeyMinMax(Vector3Int cellCoordinate)
+    {
+        //Min
+        if(cellCoordinate.x < _cellRangeMin.x) _cellRangeMin.x = cellCoordinate.x;
+        if(cellCoordinate.y < _cellRangeMin.y) _cellRangeMin.y = cellCoordinate.y;
+        if(cellCoordinate.z < _cellRangeMin.z) _cellRangeMin.z = cellCoordinate.z;
+        
+        //Max
+        if(cellCoordinate.x > _cellRangeMax.x) _cellRangeMax.x = cellCoordinate.x;
+        if(cellCoordinate.y > _cellRangeMax.y) _cellRangeMax.y = cellCoordinate.y;
+        if(cellCoordinate.z > _cellRangeMax.z) _cellRangeMax.z = cellCoordinate.z;
     }
     #endregion
 }
