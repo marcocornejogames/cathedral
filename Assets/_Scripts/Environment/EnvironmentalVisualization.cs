@@ -35,7 +35,7 @@ public class EnvironmentalVisualization : MonoBehaviour
     {
         foreach (var cell in _volume.Cells)
         {
-            var newMarker = Instantiate(_environmentalMarker);
+            var newMarker = Instantiate(_environmentalMarker, transform);
             _markers.Add(newMarker);
             newMarker.transform.position = _volume.CellToWorldPos(cell.Key);
         }
@@ -50,7 +50,6 @@ public class EnvironmentalVisualization : MonoBehaviour
         if (_isVisualizing != _toggleVisualization)
         {
             ToggleMarkerVisibility(_toggleVisualization);
-            _isVisualizing = _toggleVisualization;
         }
         
         if (_toggleVisualization)
@@ -79,11 +78,10 @@ public class EnvironmentalVisualization : MonoBehaviour
         
     }
 
-    private void ToggleMarkerVisibility(bool visibility)
+    public void ToggleMarkerVisibility(bool visibility)
     {
-        foreach (var marker in _markers)
-        {
-            marker.enabled = visibility;
-        }
+        _isVisualizing = visibility;
+        _toggleVisualization = visibility;
+        foreach (var marker in _markers) marker.enabled = visibility;
     }
 }

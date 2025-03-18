@@ -157,7 +157,7 @@ MonoBehaviour:
   _passiveCooling: 0
   _coolingRate: 0.01
   _useFluidMechanics: 1
-  _startingTemperature: 3.5
+  _startingTemperature: 55
   _maxTemperature: 100
   _minTemperature: 0
   _conductivity: 0.001

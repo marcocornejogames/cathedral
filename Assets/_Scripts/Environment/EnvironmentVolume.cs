@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,6 +23,7 @@ public class EnvironCellData
     private readonly float _minTemp;
     public float Density {get; private set;}
     public float Conductivity {get; private set;}
+    public Vector3 Current;
     
     public float ConductionExchange(float foreignEntityTemperature, float conductivity)
     {
@@ -71,34 +73,55 @@ public class EnvironmentVolume : MonoBehaviour
     [Header("Grid Values")]
     [SerializeField] private int _gridCellSize = 1;
 
-    [Header("Environment Values")] 
+    [Header("Temperature")] 
     [SerializeField] private bool _passiveCooling;
     [SerializeField] private float _coolingRate = 0.01f;
-    [SerializeField] private bool _useFluidMechanics = true;
     [SerializeField] private float _startingTemperature;
     [SerializeField] private float _maxTemperature;
     [SerializeField] private float _minTemperature;
     [SerializeField] private float _conductivity;
-    [SerializeField] private float _startingDensity;
+    
+    [Header("Fluidity")]
+    [SerializeField] private bool _useFluidMechanics = true;
+
+    [SerializeField] private float _convectionRate = 0.5f;
     [SerializeField] private float _environmentalDrag;
+    
+    [Header("Density")]
+    [SerializeField] private float _startingDensity;
 
     [Header("Data")] 
     public Dictionary<Vector3Int, EnvironCellData> Cells { get; private set; } = new();
     private Vector3Int _cellRangeMin;
     private Vector3Int _cellRangeMax;
-
+    
     #region UNITY METHODS
+
     private void Awake()
     {
         //Get Components
         _collider = GetComponent<Collider>();
         SetUpCells();
     }
-    
+
     private void Update()
     {
         TransferHeat();
         if(_passiveCooling) PassiveCooling();
+        
+    }
+
+    protected void FixedUpdate()
+    {
+        Debug.Log($"Fluid mechanics enabled: {_useFluidMechanics}; Entity Count: {Entities.Count}; Environment name: {name}");
+        if (!_useFluidMechanics || Entities.Count <= 0 ) return;
+        Debug.Log("Calling Calculate Currents");
+        CalculateCurrents();
+        foreach (var entity in Entities)
+        {
+            if (!entity) continue;
+            entity.ApplyExternalForce(entity.EnvironmentData.Current);
+        }
     }
 
     #endregion
@@ -134,6 +157,38 @@ public class EnvironmentVolume : MonoBehaviour
                 TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.forward), cell.Value);
             if(cell.Key.z == _cellRangeMin.z) 
                 TryHeatNextVolume(CastForNeighbourVolume(cell.Key, Vector3.back), cell.Value);
+        }
+    }
+
+    private void CalculateCurrents()
+    {
+        foreach (var cell in Cells)
+        {
+            //Debugging
+            var current = new Vector3(0, 0, 0);
+            var neighbours = GetSurroundingKeys(cell.Key);
+            int convectionAxes = 0;
+            foreach (var neighbour in neighbours)
+            {
+                float neighbourTemp = Cells.GetValueOrDefault(neighbour).Temperature;
+                if (cell.Value.Temperature > neighbourTemp)
+                {
+                    Vector3 direction = (neighbour - cell.Key);
+                    direction.Normalize();
+                    
+                    direction *= (cell.Value.Temperature - neighbourTemp)*_convectionRate;
+                    
+                    current += direction;
+                    convectionAxes++;
+                }
+            }
+
+            if (convectionAxes > 0)
+            {
+                current /= convectionAxes;
+            }
+
+            cell.Value.Current = current;
         }
     }
 
@@ -217,6 +272,28 @@ public class EnvironmentVolume : MonoBehaviour
 
         neighbourCells.Remove(Cells.GetValueOrDefault(cellCoordinate)); //Remove center cell, only surroundings
         return neighbourCells;
+        
+    }
+    protected List<Vector3Int> GetSurroundingKeys(Vector3Int cellCoordinate)
+    {
+        var neighbourKeys = new List<Vector3Int>();
+        for (int cx = cellCoordinate.x - _gridCellSize; cx <= cellCoordinate.x + _gridCellSize; cx += _gridCellSize)
+        {
+            for (int cy = cellCoordinate.y - _gridCellSize; cy <= cellCoordinate.y + _gridCellSize; cy += _gridCellSize)
+            {
+                for (int cz = cellCoordinate.z - _gridCellSize; cz <= cellCoordinate.z+ _gridCellSize; cz += _gridCellSize)
+                {
+                    var neighbourCellKey = new Vector3Int(cx, cy, cz);
+                    
+                    if (!Cells.ContainsKey(neighbourCellKey)) continue;
+    
+                    neighbourKeys.Add(neighbourCellKey);
+                }
+            }
+        }
+
+        neighbourKeys.Remove(cellCoordinate); //Remove center cell, only surroundings
+        return neighbourKeys;
         
     }
 

@@ -6,6 +6,7 @@ public class WaterVolume : EnvironmentVolume
 {
     private void FixedUpdate()
     {
+        base.FixedUpdate();
         //Apply buoyancy based on environemnt and entity density
         if (Entities.Count == 0) return;
         foreach (var floatingEntity in Entities)
