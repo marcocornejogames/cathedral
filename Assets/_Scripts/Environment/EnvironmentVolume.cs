@@ -1,22 +1,25 @@
-using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor.Rendering;
 using UnityEngine;
-using UnityEngine.Serialization;
 
-//Cell data
+#region ENVIRONMENTAL CELL DATA
 public class EnvironCellData
 { 
-    public EnvironCellData(int cellIndex, float temperature, float density, float conductivity)
+    public EnvironCellData(int cellIndex, float temperature, float maxTemperature, float minTemperature, float density, float conductivity)
     {
         Index = cellIndex;
+        
         Temperature = temperature;
+        _maxTemp = maxTemperature;
+        _minTemp = minTemperature;
+        
         Density = density;
+        
         Conductivity = conductivity;
     }
     public int Index { get; private set; }
     public float Temperature {get; private set;}
+    private readonly float _maxTemp;
+    private readonly float _minTemp;
     public float Density {get; private set;}
     public float Conductivity {get; private set;}
     
@@ -35,17 +38,28 @@ public class EnvironCellData
         var heatExchanged = tempDiff * averageConductivity;
         
 
-        Temperature += heatExchanged;
+        Temperature = Mathf.Clamp(Temperature += heatExchanged, _minTemp, _maxTemp);
         Index++;
         return heatExchanged;
     }
 
     public void CallForExchange(PhysicsEntity entity)
     {
-        Debug.Log("Test");
+        Temperature = Mathf.Clamp(Temperature -= entity.ConductionExchange(Temperature, Conductivity), _minTemp, _maxTemp);
+    }
+    public void CallForExchange(EnvironCellData entity)
+    {
         Temperature -= entity.ConductionExchange(Temperature, Conductivity);
     }
+
+    public void PassiveCooling(float coolingRate)
+    {
+        Temperature = Mathf.Clamp(Temperature -= coolingRate, _minTemp, _maxTemp);
+    }
+
 }
+
+#endregion
 
 [RequireComponent(typeof(Collider))]
 public class EnvironmentVolume : MonoBehaviour
@@ -56,29 +70,66 @@ public class EnvironmentVolume : MonoBehaviour
     
     [Header("Grid Values")]
     [SerializeField] private int _gridCellSize = 1;
-    
-    [Header("Environment Values")]
+
+    [Header("Environment Values")] 
+    [SerializeField] private bool _passiveCooling;
+    [SerializeField] private float _coolingRate = 0.01f;
+    [SerializeField] private bool _useFluidMechanics = true;
     [SerializeField] private float _startingTemperature;
     [SerializeField] private float _maxTemperature;
+    [SerializeField] private float _minTemperature;
     [SerializeField] private float _conductivity;
     [SerializeField] private float _startingDensity;
     [SerializeField] private float _environmentalDrag;
 
     [Header("Data")] 
     public Dictionary<Vector3Int, EnvironCellData> Cells { get; private set; } = new();
-    
+
+    #region UNITY METHODS
     private void Awake()
     {
         //Get Components
         _collider = GetComponent<Collider>();
         SetUpCells();
     }
-
+    
     private void Update()
     {
+        TransferHeat();
+        if(_passiveCooling) PassiveCooling();
+    }
+    
+
+    #endregion
+
+    #region PHYSICS MECHANICS
+    private void TransferHeat()
+    {
+        foreach (var cell in Cells)
+        {
+            //Get cell coordinates
+            var cellData = cell.Value;
+            var surroundingCells = GetSurroundingCells(cell.Key);
+            foreach (var neighbour in surroundingCells)
+            {
+                if (neighbour.Temperature < cellData.Temperature)
+                {
+                    cellData.CallForExchange(neighbour);
+                }
+
+            }
+            
+        }
     }
 
-    #region Entity Management
+    private void PassiveCooling()
+    {
+        foreach (var cell in Cells) cell.Value.PassiveCooling(_coolingRate);
+    }
+
+    #endregion
+
+    #region ENTITY MANAGEMENT
     private void OnTriggerStay(Collider other)
     {
         if (!other.TryGetComponent(out PhysicsEntity entity)) return;
@@ -105,7 +156,12 @@ public class EnvironmentVolume : MonoBehaviour
     
     #region TOOLS
 
-    protected Vector3Int WorldPosToCell(Vector3 pos)
+    public Vector3 CellToWorldPos(Vector3Int cell)
+    {
+        var cellExtent = (float)_gridCellSize;
+        return new Vector3(cell.x + cellExtent/2, cell.y + cellExtent/2, cell.z + cellExtent/2);
+    }
+    public Vector3Int WorldPosToCell(Vector3 pos)
     {
         foreach (var cell in Cells.Keys)
         {
@@ -120,6 +176,29 @@ public class EnvironmentVolume : MonoBehaviour
         
         return Vector3Int.zero;
     }
+
+    protected List<EnvironCellData> GetSurroundingCells(Vector3Int cellCoordinate)
+    {
+        var neighbourCells = new List<EnvironCellData>();
+        for (int cx = cellCoordinate.x - _gridCellSize; cx <= cellCoordinate.x + _gridCellSize; cx += _gridCellSize)
+        {
+            for (int cy = cellCoordinate.y - _gridCellSize; cy <= cellCoordinate.y + _gridCellSize; cy += _gridCellSize)
+            {
+                for (int cz = cellCoordinate.z - _gridCellSize; cz <= cellCoordinate.z+ _gridCellSize; cz += _gridCellSize)
+                {
+                    var neighbourCellKey = new Vector3Int(cx, cy, cz);
+                    
+                    if (!Cells.ContainsKey(neighbourCellKey)) continue;
+    
+                    neighbourCells.Add(Cells.GetValueOrDefault(neighbourCellKey));
+                }
+            }
+        }
+
+        neighbourCells.Remove(Cells.GetValueOrDefault(cellCoordinate)); //Remove center cell, only surroundings
+        return neighbourCells;
+        
+    }
     #endregion
     
     #region SETUP
@@ -130,8 +209,6 @@ public class EnvironmentVolume : MonoBehaviour
 
         var index = 0;
         
-        
-        
         for (int z = boundsMin.z; z < boundsMax.z; z = z + _gridCellSize)
         {
             for (int y = boundsMin.y; y < boundsMax.y; y = y + _gridCellSize)
@@ -139,7 +216,7 @@ public class EnvironmentVolume : MonoBehaviour
                 for (int x = boundsMin.x; x < boundsMax.x; x = x + _gridCellSize)
                 {
                     var cellCoordinates = new Vector3Int(x, y, z);
-                    var cellData = new EnvironCellData(index, _startingTemperature, _startingDensity, _conductivity);
+                    var cellData = new EnvironCellData(index, _startingTemperature, _maxTemperature, _minTemperature, _startingDensity, _conductivity);
                     
                     Cells.Add(cellCoordinates, cellData);
                     index++;

@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PhysicsEntity : MonoBehaviour
@@ -62,5 +61,10 @@ public class PhysicsEntity : MonoBehaviour
     public void EnvironmentalDrag(float drag)
     {
         _rigidbody.linearDamping = drag;
+    }
+
+    public void IncreaseInternalTemperature(float amount)
+    {
+        _temperature += amount;
     }
 }
